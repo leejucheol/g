@@ -1,0 +1,4 @@
+dump
+.env
+__pycache__
+market_data.db

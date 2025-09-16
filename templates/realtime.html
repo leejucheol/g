@@ -1,0 +1,490 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🔄 실시간 금 데이터</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        
+        .header {
+            background: linear-gradient(45deg, #28a745, #20c997);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+        
+        .nav {
+            background: #f8f9fa;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+        }
+        
+        .nav a {
+            padding: 12px 24px;
+            text-decoration: none;
+            background: #007bff;
+            color: white;
+            border-radius: 25px;
+            transition: all 0.3s;
+            font-weight: bold;
+        }
+        
+        .nav a:hover {
+            background: #0056b3;
+            transform: translateY(-2px);
+        }
+        
+        .content {
+            padding: 40px;
+        }
+        
+        .realtime-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .stat-card {
+            background: linear-gradient(45deg, #007bff, #0056b3);
+            color: white;
+            padding: 25px;
+            border-radius: 15px;
+            text-align: center;
+            box-shadow: 0 10px 20px rgba(0,123,255,0.2);
+        }
+        
+        .stat-card h3 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            font-weight: bold;
+        }
+        
+        .stat-card p {
+            font-size: 1.1em;
+            opacity: 0.9;
+        }
+        
+        .realtime-data {
+            background: #f8f9fa;
+            border-radius: 15px;
+            padding: 30px;
+            margin-bottom: 30px;
+        }
+        
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+        
+        .data-table th {
+            background: linear-gradient(45deg, #343a40, #495057);
+            color: white;
+            padding: 15px;
+            text-align: left;
+            font-weight: bold;
+        }
+        
+        .data-table td {
+            padding: 15px;
+            border-bottom: 1px solid #dee2e6;
+        }
+        
+        .data-table tr:hover {
+            background: #f8f9fa;
+        }
+        
+        .price-cell {
+            font-weight: bold;
+            font-size: 1.1em;
+        }
+        
+        .price-up {
+            color: #28a745;
+        }
+        
+        .price-down {
+            color: #dc3545;
+        }
+        
+        .price-same {
+            color: #6c757d;
+        }
+        
+        .update-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 10px;
+            animation: pulse 2s infinite;
+        }
+        
+        .update-indicator.active {
+            background: #28a745;
+        }
+        
+        .update-indicator.inactive {
+            background: #dc3545;
+        }
+        
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+        
+        .controls {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+            flex-wrap: wrap;
+            gap: 20px;
+        }
+        
+        .auto-refresh {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 60px;
+            height: 34px;
+        }
+        
+        .switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+        
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #ccc;
+            transition: .4s;
+            border-radius: 34px;
+        }
+        
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 26px;
+            width: 26px;
+            left: 4px;
+            bottom: 4px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+        }
+        
+        input:checked + .slider {
+            background-color: #28a745;
+        }
+        
+        input:checked + .slider:before {
+            transform: translateX(26px);
+        }
+        
+        .timestamp {
+            text-align: center;
+            color: #666;
+            font-style: italic;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔄 실시간 금 데이터</h1>
+            <p>실시간 업데이트 모니터링</p>
+        </div>
+        
+        <div class="nav">
+            <a href="/">대시보드</a>
+            <a href="/realtime">실시간</a>
+            <a href="/history">히스토리</a>
+        </div>
+        
+        <div class="content">
+            <div class="realtime-stats">
+                <div class="stat-card">
+                    <h3 id="update-count">0</h3>
+                    <p>총 업데이트</p>
+                </div>
+                <div class="stat-card">
+                    <h3 id="success-rate">100%</h3>
+                    <p>성공률</p>
+                </div>
+                <div class="stat-card">
+                    <h3 id="avg-response">-</h3>
+                    <p>평균 응답시간</p>
+                </div>
+            </div>
+            
+            <div class="controls">
+                <div class="auto-refresh">
+                    <span class="update-indicator active" id="status-indicator"></span>
+                    <label class="switch">
+                        <input type="checkbox" id="auto-refresh-toggle" checked>
+                        <span class="slider"></span>
+                    </label>
+                    <label for="auto-refresh-toggle">자동 새로고침 (5초)</label>
+                </div>
+                
+                <button onclick="manualRefresh()" style="padding: 10px 20px; background: #007bff; color: white; border: none; border-radius: 5px; cursor: pointer;">
+                    🔄 수동 새로고침
+                </button>
+            </div>
+            
+            <div class="realtime-data">
+                <h2 style="margin-bottom: 20px; color: #333;">📊 실시간 데이터</h2>
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>구분</th>
+                            <th>현재가</th>
+                            <th>매수호가</th>
+                            <th>매수잔량</th>
+                            <th>매도호가</th>
+                            <th>매도잔량</th>
+                            <th>변동</th>
+                        </tr>
+                    </thead>
+                    <tbody id="data-table-body">
+                        <tr>
+                            <td>🏠 국내 금ETF</td>
+                            <td class="price-cell" id="domestic-price">-</td>
+                            <td id="domestic-bid">-</td>
+                            <td id="domestic-bid-vol">-</td>
+                            <td id="domestic-ask">-</td>
+                            <td id="domestic-ask-vol">-</td>
+                            <td id="domestic-change">-</td>
+                        </tr>
+                        <tr>
+                            <td>🥇 미국 금선물</td>
+                            <td class="price-cell" id="us-price">-</td>
+                            <td id="us-bid">-</td>
+                            <td id="us-bid-vol">-</td>
+                            <td id="us-ask">-</td>
+                            <td id="us-ask-vol">-</td>
+                            <td id="us-change">-</td>
+                        </tr>
+                        <tr>
+                            <td>💱 USD/KRW</td>
+                            <td class="price-cell" id="usd-krw-rate">-</td>
+                            <td colspan="4">-</td>
+                            <td id="usd-change">-</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            
+            <div class="timestamp" id="timestamp"></div>
+        </div>
+    </div>
+
+    <script>
+        let updateCount = 0;
+        let successCount = 0;
+        let responseTimes = [];
+        let previousData = {};
+        let autoRefreshInterval;
+        
+        function formatNumber(num) {
+            if (num === null || num === undefined || num === 0) return '-';
+            return new Intl.NumberFormat('ko-KR').format(num);
+        }
+        
+        function formatPrice(num, currency = '원') {
+            if (num === null || num === undefined || num === 0) return '-';
+            if (currency === '$') {
+                return `$${new Intl.NumberFormat('en-US', {minimumFractionDigits: 2}).format(num)}`;
+            }
+            return `${new Intl.NumberFormat('ko-KR').format(num)}${currency}`;
+        }
+        
+        function updateStats() {
+            document.getElementById('update-count').textContent = updateCount;
+            const successRate = updateCount > 0 ? Math.round((successCount / updateCount) * 100) : 100;
+            document.getElementById('success-rate').textContent = successRate + '%';
+            
+            if (responseTimes.length > 0) {
+                const avgTime = responseTimes.reduce((a, b) => a + b, 0) / responseTimes.length;
+                document.getElementById('avg-response').textContent = Math.round(avgTime) + 'ms';
+            }
+        }
+        
+        function getChangeIndicator(currentValue, previousValue) {
+            if (!previousValue || currentValue === previousValue) return { text: '-', class: 'price-same' };
+            if (currentValue > previousValue) return { text: '▲', class: 'price-up' };
+            return { text: '▼', class: 'price-down' };
+        }
+        
+        async function loadRealtimeData() {
+            const startTime = performance.now();
+            updateCount++;
+            
+            try {
+                const response = await fetch('/api/gold-data');
+                const result = await response.json();
+                const endTime = performance.now();
+                const responseTime = endTime - startTime;
+                
+                responseTimes.push(responseTime);
+                if (responseTimes.length > 20) responseTimes.shift(); // 최근 20개만 유지
+                
+                if (result.success) {
+                    successCount++;
+                    const data = result.data;
+                    
+                    // 국내 금 ETF 데이터 업데이트
+                    if (data.domestic_gold && typeof data.domestic_gold === 'object') {
+                        const currentPrice = data.domestic_gold.current_price;
+                        const change = getChangeIndicator(currentPrice, previousData.domesticPrice);
+                        
+                        document.getElementById('domestic-price').textContent = formatPrice(currentPrice);
+                        document.getElementById('domestic-bid').textContent = formatPrice(data.domestic_gold.bid_price_1);
+                        document.getElementById('domestic-bid-vol').textContent = formatNumber(data.domestic_gold.bid_volume_1) + '주';
+                        document.getElementById('domestic-ask').textContent = formatPrice(data.domestic_gold.ask_price_1);
+                        document.getElementById('domestic-ask-vol').textContent = formatNumber(data.domestic_gold.ask_volume_1) + '주';
+                        
+                        const changeCell = document.getElementById('domestic-change');
+                        changeCell.textContent = change.text;
+                        changeCell.className = change.class;
+                        
+                        previousData.domesticPrice = currentPrice;
+                    }
+                    
+                    // 미국 금 선물 데이터 업데이트
+                    if (data.us_gold_futures && typeof data.us_gold_futures === 'object') {
+                        const currentPrice = data.us_gold_futures.current_price;
+                        const change = getChangeIndicator(currentPrice, previousData.usPrice);
+                        
+                        document.getElementById('us-price').textContent = formatPrice(currentPrice, '$');
+                        document.getElementById('us-bid').textContent = formatPrice(data.us_gold_futures.bid_price, '$');
+                        document.getElementById('us-bid-vol').textContent = formatNumber(data.us_gold_futures.bid_volume);
+                        document.getElementById('us-ask').textContent = formatPrice(data.us_gold_futures.ask_price, '$');
+                        document.getElementById('us-ask-vol').textContent = formatNumber(data.us_gold_futures.ask_volume);
+                        
+                        const changeCell = document.getElementById('us-change');
+                        changeCell.textContent = change.text;
+                        changeCell.className = change.class;
+                        
+                        previousData.usPrice = currentPrice;
+                    }
+                    
+                    // USD/KRW 환율 데이터 업데이트
+                    if (data.usd_krw && typeof data.usd_krw === 'object') {
+                        const currentRate = data.usd_krw.current_price;
+                        const change = getChangeIndicator(currentRate, previousData.usdKrwRate);
+                        
+                        document.getElementById('usd-krw-rate').textContent = formatPrice(currentRate);
+                        
+                        const changeCell = document.getElementById('usd-change');
+                        changeCell.textContent = change.text;
+                        changeCell.className = change.class;
+                        
+                        previousData.usdKrwRate = currentRate;
+                    }
+                    
+                    document.getElementById('timestamp').textContent = 
+                        `마지막 업데이트: ${new Date(result.timestamp).toLocaleString('ko-KR')}`;
+                    
+                    // 상태 표시기 업데이트
+                    const indicator = document.getElementById('status-indicator');
+                    indicator.className = 'update-indicator active';
+                    
+                } else {
+                    console.error('데이터 로딩 실패:', result.error);
+                    const indicator = document.getElementById('status-indicator');
+                    indicator.className = 'update-indicator inactive';
+                }
+                
+            } catch (error) {
+                console.error('네트워크 오류:', error);
+                const indicator = document.getElementById('status-indicator');
+                indicator.className = 'update-indicator inactive';
+            }
+            
+            updateStats();
+        }
+        
+        function manualRefresh() {
+            loadRealtimeData();
+        }
+        
+        function toggleAutoRefresh() {
+            const toggle = document.getElementById('auto-refresh-toggle');
+            
+            if (toggle.checked) {
+                autoRefreshInterval = setInterval(loadRealtimeData, 5000); // 5초마다
+                console.log('자동 새로고침 시작');
+            } else {
+                clearInterval(autoRefreshInterval);
+                console.log('자동 새로고침 중지');
+            }
+        }
+        
+        // 페이지 로드 시 초기화
+        document.addEventListener('DOMContentLoaded', function() {
+            loadRealtimeData(); // 초기 로딩
+            
+            // 자동 새로고침 토글 이벤트
+            document.getElementById('auto-refresh-toggle').addEventListener('change', toggleAutoRefresh);
+            
+            // 기본적으로 자동 새로고침 시작
+            toggleAutoRefresh();
+        });
+        
+        // 페이지 종료 시 인터벌 정리
+        window.addEventListener('beforeunload', function() {
+            if (autoRefreshInterval) {
+                clearInterval(autoRefreshInterval);
+            }
+        });
+    </script>
+</body>
+</html>
