@@ -28,6 +28,7 @@ class DatabaseManager:
                 CREATE TABLE IF NOT EXISTS gold_data (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     timestamp TEXT NOT NULL,
+                    usd_krw_rate REAL,
                     domestic_current_price REAL,
                     domestic_bid_price_1 REAL,
                     domestic_bid_volume_1 INTEGER,
@@ -44,7 +45,6 @@ class DatabaseManager:
                     domestic_gold_spot_ask_price_1 REAL,
                     domestic_gold_spot_ask_volume_1 INTEGER,
                     nav_value REAL,
-                    usd_krw_rate REAL,
                     created_at TEXT DEFAULT CURRENT_TIMESTAMP
                 )
             ''')
@@ -64,7 +64,10 @@ class DatabaseManager:
             # 한국시간으로 created_at 설정
             korean_time = get_korean_time().strftime('%Y-%m-%d %H:%M:%S')
             timestamp = get_korean_time().isoformat()
-            
+
+            # 환율 데이터 추출
+            usd_krw_rate = usd_krw_data.get('current_price') if usd_krw_data else None
+
             # 데이터 추출 (안전하게)
             domestic_current = domestic_data.get('current_price') if domestic_data else None
             domestic_bid = domestic_data.get('bid_price_1') if domestic_data else None
@@ -87,12 +90,11 @@ class DatabaseManager:
             
             # NAV 데이터 추출 (계산된 값만)
             nav_value = nav_data.get('nav_value') if nav_data else None
-            
-            usd_krw_rate = usd_krw_data.get('current_price') if usd_krw_data else None
-            
+
+            # 데이터 삽입            
             cursor.execute('''
                 INSERT INTO gold_data (
-                    timestamp, domestic_current_price, domestic_bid_price_1, 
+                    timestamp, usd_krw_rate, domestic_current_price, domestic_bid_price_1, 
                     domestic_bid_volume_1, domestic_ask_price_1, domestic_ask_volume_1,
                     us_futures_current_price, us_futures_bid_price_1, us_futures_bid_volume_1,
                     us_futures_ask_price_1, us_futures_ask_volume_1,
@@ -102,11 +104,11 @@ class DatabaseManager:
                     usd_krw_rate, created_at
                 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ''', (
-                timestamp, domestic_current, domestic_bid, domestic_bid_vol,
+                timestamp, usd_krw_rate, domestic_current, domestic_bid, domestic_bid_vol,
                 domestic_ask, domestic_ask_vol, us_current, us_bid, us_bid_vol,
                 us_ask, us_ask_vol, spot_current, spot_bid, spot_bid_vol,
                 spot_ask, spot_ask_vol, nav_value,
-                usd_krw_rate, korean_time
+                korean_time
             ))
             
             conn.commit()
@@ -156,9 +158,10 @@ class DatabaseManager:
         
         for i, row in enumerate(data, 1):
             print(f"\n[{i}] {row['timestamp']}")
+            if row['usd_krw_rate']:
+                print(f"    USD/KRW: {row['usd_krw_rate']:,.2f}원")
             if row['domestic_current_price']:
                 print(f"    국내금ETF: {row['domestic_current_price']:,}원")
             if row['us_futures_current_price']:
                 print(f"    미국금선물: ${row['us_futures_current_price']:,.2f}")
-            if row['usd_krw_rate']:
-                print(f"    USD/KRW: {row['usd_krw_rate']:,.2f}원")
+            
